@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Organizador de Tarefas</title>
+    <link rel="manifest" href="manifest.json">
     <style>
         body {
             margin: 0;
@@ -236,6 +237,11 @@ function loadFromFile() {
         });
     };
     reader.readAsText(file);
+}
+
+// Registro do Service Worker
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./service-worker.js");
 }
 </script>
 
