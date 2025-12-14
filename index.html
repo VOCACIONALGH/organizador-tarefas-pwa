@@ -43,7 +43,6 @@
             cursor: pointer;
         }
 
-        /* 🔹 DISPOSIÇÃO DEFINITIVA */
         .tasks {
             display: grid;
             grid-template-columns: 1fr 1fr 1fr;
@@ -196,24 +195,37 @@ function collectTasks() {
 }
 
 async function saveToFile() {
-    if (!window.showSaveFilePicker) {
-        alert("Seu navegador não suporta escolha de local de arquivo.");
+    const data = collectTasks();
+    const json = JSON.stringify(data, null, 2);
+
+    // Desktop moderno
+    if (window.showSaveFilePicker) {
+        const handle = await window.showSaveFilePicker({
+            suggestedName: "tarefas.json",
+            types: [{
+                description: "Arquivo JSON",
+                accept: { "application/json": [".json"] }
+            }]
+        });
+
+        const writable = await handle.createWritable();
+        await writable.write(json);
+        await writable.close();
         return;
     }
 
-    const data = collectTasks();
+    // Mobile / fallback
+    const blob = new Blob([json], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
 
-    const handle = await window.showSaveFilePicker({
-        suggestedName: "tarefas.json",
-        types: [{
-            description: "Arquivo JSON",
-            accept: { "application/json": [".json"] }
-        }]
-    });
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "tarefas.json";
+    document.body.appendChild(a);
+    a.click();
 
-    const writable = await handle.createWritable();
-    await writable.write(JSON.stringify(data, null, 2));
-    await writable.close();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 }
 
 function loadFromFile() {
@@ -239,9 +251,9 @@ function loadFromFile() {
     reader.readAsText(file);
 }
 
-// Registro do Service Worker
+// Service Worker
 if ("serviceWorker" in navigator) {
-  navigator.serviceWorker.register("./service-worker.js");
+    navigator.serviceWorker.register("./service-worker.js");
 }
 </script>
 
