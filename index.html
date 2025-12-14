@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Organizador de Tarefas</title>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            background-color: #f4f6f8;
+        }
+
+        header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            font-size: 24px;
+        }
+
+        .container {
+            max-width: 1100px;
+            margin: 30px auto;
+            padding: 20px;
+        }
+
+        .task-form, .file-controls {
+            background: white;
+            padding: 20px;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+
+        input, select, button {
+            padding: 10px;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+
+        button {
+            cursor: pointer;
+        }
+
+        /* 🔹 DISPOSIÇÃO DEFINITIVA */
+        .tasks {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: auto auto;
+            grid-template-areas:
+                "vocacionais . pessoais"
+                "vocacionais-sociais sociais pessoais-sociais";
+            gap: 20px;
+        }
+
+        .vocacionais { grid-area: vocacionais; }
+        .pessoais { grid-area: pessoais; }
+        .sociais { grid-area: sociais; }
+        .pessoais-sociais { grid-area: pessoais-sociais; }
+        .vocacionais-sociais { grid-area: vocacionais-sociais; }
+
+        .task-column {
+            background: white;
+            padding: 15px;
+            border-radius: 6px;
+        }
+
+        ul {
+            list-style: none;
+            padding: 0;
+        }
+
+        li {
+            background: #ecf0f1;
+            padding: 10px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        li.completed {
+            text-decoration: line-through;
+            opacity: 0.6;
+        }
+
+        .buttons button {
+            margin-left: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<header>Organizador de Tarefas</header>
+
+<div class="container">
+
+    <div class="task-form">
+        <input type="text" id="taskText" placeholder="Descrição da tarefa">
+        <select id="taskType">
+            <option value="pessoais">Pessoais</option>
+            <option value="sociais">Sociais</option>
+            <option value="vocacionais">Vocacionais</option>
+            <option value="pessoais-sociais">Pessoais-Sociais</option>
+            <option value="vocacionais-sociais">Vocacionais-Sociais</option>
+        </select>
+        <button onclick="addTask()">Adicionar</button>
+    </div>
+
+    <div class="file-controls">
+        <button onclick="saveToFile()">Salvar tarefas</button>
+        <input type="file" id="fileInput" accept=".json" onchange="loadFromFile()">
+    </div>
+
+    <div class="tasks">
+        <div class="task-column vocacionais">
+            <h3>Vocacionais</h3>
+            <ul id="vocacionais"></ul>
+        </div>
+
+        <div class="task-column pessoais">
+            <h3>Pessoais</h3>
+            <ul id="pessoais"></ul>
+        </div>
+
+        <div class="task-column vocacionais-sociais">
+            <h3>Vocacionais-Sociais</h3>
+            <ul id="vocacionais-sociais"></ul>
+        </div>
+
+        <div class="task-column sociais">
+            <h3>Sociais</h3>
+            <ul id="sociais"></ul>
+        </div>
+
+        <div class="task-column pessoais-sociais">
+            <h3>Pessoais-Sociais</h3>
+            <ul id="pessoais-sociais"></ul>
+        </div>
+    </div>
+
+</div>
+
+<script>
+function createTask(text, type, completed=false) {
+    const li = document.createElement("li");
+    li.textContent = text;
+
+    const buttons = document.createElement("div");
+    buttons.className = "buttons";
+
+    const complete = document.createElement("button");
+    complete.textContent = "Concluir";
+    complete.onclick = () => li.classList.toggle("completed");
+
+    const remove = document.createElement("button");
+    remove.textContent = "Remover";
+    remove.onclick = () => li.remove();
+
+    buttons.appendChild(complete);
+    buttons.appendChild(remove);
+    li.appendChild(buttons);
+
+    if (completed) li.classList.add("completed");
+
+    document.getElementById(type).appendChild(li);
+}
+
+function addTask() {
+    const text = taskText.value.trim();
+    const type = taskType.value;
+    if (!text) return alert("Digite a tarefa");
+    createTask(text, type);
+    taskText.value = "";
+}
+
+function collectTasks() {
+    const data = {};
+    [
+        "pessoais",
+        "sociais",
+        "vocacionais",
+        "pessoais-sociais",
+        "vocacionais-sociais"
+    ].forEach(type => {
+        data[type] = [];
+        document.querySelectorAll(`#${type} li`).forEach(li => {
+            data[type].push({
+                text: li.childNodes[0].nodeValue,
+                completed: li.classList.contains("completed")
+            });
+        });
+    });
+    return data;
+}
+
+async function saveToFile() {
+    if (!window.showSaveFilePicker) {
+        alert("Seu navegador não suporta escolha de local de arquivo.");
+        return;
+    }
+
+    const data = collectTasks();
+
+    const handle = await window.showSaveFilePicker({
+        suggestedName: "tarefas.json",
+        types: [{
+            description: "Arquivo JSON",
+            accept: { "application/json": [".json"] }
+        }]
+    });
+
+    const writable = await handle.createWritable();
+    await writable.write(JSON.stringify(data, null, 2));
+    await writable.close();
+}
+
+function loadFromFile() {
+    const file = fileInput.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = e => {
+        const data = JSON.parse(e.target.result);
+        [
+            "pessoais",
+            "sociais",
+            "vocacionais",
+            "pessoais-sociais",
+            "vocacionais-sociais"
+        ].forEach(t => {
+            document.getElementById(t).innerHTML = "";
+            if (data[t]) {
+                data[t].forEach(item => createTask(item.text, t, item.completed));
+            }
+        });
+    };
+    reader.readAsText(file);
+}
+</script>
+
+</body>
+</html>
